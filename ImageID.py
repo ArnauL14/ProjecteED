@@ -57,15 +57,26 @@ class ImageID:
 
     def generate_uuid(self, file: str) -> str:
         """
-        Genera (o obté si ja existeix) un UUID per a l'arxiu especificat.
+        Genera un UUID per a l'arxiu especificat.
         'file' HA DE SER el path canònic (obtingut de ImageFiles).
         
         Comprova col·lisions.
+        Aquest mètode només ha de funcionar per a fitxers NOUS.
+        Per a consultar existents, s'ha de fer servir get_uuid().
         """
         
         # 1. Comprovem si ja hem generat un UUID per a aquest arxiu
+        #    *** INICI DE LA CORRECCIÓ ***
+        #    Segons la guia (Func2), hi ha un mètode get_uuid
+        #    per a CONSULTAR, i generate_uuid per a GENERAR.
+        #    Aquest mètode no hauria de retornar un ID existent.
+        #    Si el fitxer ja existeix, retornem None perquè
+        #    l'operació correcta seria cridar a get_uuid().
         if file in self.path_to_uuid:
-            return self.path_to_uuid[file]
+            print(f"ERROR: L'arxiu '{file}' ja té un UUID assignat.")
+            print(f"  Feu servir get_uuid() per a consultar-lo.")
+            return None # Fallida - el fitxer ja existeix
+        #    *** FI DE LA CORRECCIÓ ***
 
         # 2. Si no existeix, el generem
         #    Fem servir cfg.get_uuid() i el convertim a string
@@ -112,8 +123,12 @@ class ImageID:
             file_to_remove = self.uuid_to_path[uuid]
             
             # 3. Esborrem l'entrada dels dos diccionaris
+            #    Comprovem si el fitxer encara hi és (podria haver
+            #    estat eliminat per error en una altra part)
+            if file_to_remove in self.path_to_uuid:
+                del self.path_to_uuid[file_to_remove]
+            
             del self.uuid_to_path[uuid]
-            del self.path_to_uuid[file_to_remove]
             
             # print(f"ImageID: UUID {uuid} (arxiu: {file_to_remove}) eliminat.")
         
