@@ -59,20 +59,11 @@ from ImageViewer import ImageViewer
 
 
 class Gallery:
-    # 1. Constructor
     def __init__(self,
                  name: str = "Unnamed Gallery",
                  image_id: ImageID = None,
                  image_data: ImageData = None,
                  image_viewer: ImageViewer = None):
-        """
-        Inicialitza la galeria.
-        Args:
-            name (str): Nom intern de la galeria.
-            image_id (ImageID): Referència al gestor d'UUIDs.
-            image_data (ImageData): Referència al gestor de metadades.
-            image_viewer (ImageViewer): Referència al visualitzador.
-        """
         self.name = name
         self.description = ""
         self.created_date = ""
@@ -82,34 +73,44 @@ class Gallery:
         self._image_data = image_data
         self._image_viewer = image_viewer
 
-    # Mètodes màgics
     def __len__(self) -> int:
         return len(self.uuids)
 
     def __str__(self) -> str:
         return f"Gallery '{self.name}' ({len(self.uuids)} imatges, Descripció: {self.description})"
 
-    # 2. Func5: Càrrega des de JSON
     def load_file(self, file: str) -> None:
         """
         Llegeix un arxiu JSON amb la definició de la galeria.
-        Valida que cada imatge referenciada (path) existeixi i estigui registrada.
-        Emmagatzema internament els UUIDs de les imatges vàlides.
+        IMPORTANT: En cas d'error, la galeria ha de quedar BUIDA.
         """
+        # Primer, buidem la galeria completament
+        original_name = self.name
+        self.name = "Unnamed Gallery"
+        self.description = ""
+        self.created_date = ""
+        self.uuids = []
+
         if self._image_id is None or self._image_data is None:
-            print("ERROR (Gallery): Dependències ImageID o ImageData no inicialitzades. Saltant càrrega.")
+            print("ERROR (Gallery): Dependències ImageID o ImageData no inicialitzades.")
+            return
+
+        # Verificar si l'arxiu existeix ABANS d'obrir-lo
+        if not os.path.exists(file):
+            print(f"ERROR (Gallery): Arxiu de galeria no trobat: {file}")
             return
 
         try:
-            with open(file, 'r') as f:
+            with open(file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
-            self.name = data.get("gallery_name", self.name)
+            # Restaurar el nom original si la càrrega és exitosa
+            self.name = data.get("gallery_name", original_name)
             self.description = data.get("description", "N/A")
             self.created_date = data.get("created_date", "N/A")
 
             image_paths = data.get("images", [])
-            self.uuids = []
+            loaded_count = 0
 
             for relative_path in image_paths:
                 # Path absolut basat en ROOT_DIR
@@ -117,28 +118,33 @@ class Gallery:
 
                 uuid = self._image_id.get_uuid(absolute_path)
                 if uuid:
-                    self.uuids.append(uuid)
-                    if self._image_data.get_prompt(uuid) is None:
-                        try:
-                            self._image_data.load_metadata(uuid)
-                        except Exception as meta_e:
-                            print(f"WARNING (Gallery): No s'han pogut carregar metadades per {uuid}: {meta_e}")
+                    # Verificar que les metadades existeixen
+                    try:
+                        # Intentar carregar metadades per verificar que existeixen
+                        self._image_data.load_metadata(uuid)
+                        prompt = self._image_data.get_prompt(uuid)
+                        if prompt is not None:
+                            self.uuids.append(uuid)
+                            loaded_count += 1
+                        else:
+                            print(f"WARNING (Gallery): Imatge '{relative_path}' no té metadades vàlides.")
+                    except Exception:
+                        print(f"WARNING (Gallery): No s'han pogut carregar metadades per {uuid}")
                 else:
-                    print(f"WARNING (Gallery): Imatge '{relative_path}' ignorada, no té UUID registrat.")
+                    print(f"WARNING (Gallery): Imatge '{relative_path}' no té UUID registrat.")
 
-        except FileNotFoundError:
-            print(f"ERROR (Gallery): Arxiu de galeria no trobat: {file}")
-            return
         except json.JSONDecodeError:
             print(f"ERROR (Gallery): Format JSON invàlid a l'arxiu: {file}")
+            # Assegurar que la galeria queda COMPLETAMENT buida
+            self.name = original_name
+            self.uuids = []
         except Exception as e:
             print(f"ERROR (Gallery): Error inesperat carregant {file}: {e}")
+            # Assegurar que la galeria queda COMPLETAMENT buida
+            self.name = original_name
+            self.uuids = []
 
-    # 3. Func5: Visualització
     def show(self) -> None:
-        """
-        Visualitza totes les imatges de la galeria en ordre utilitzant ImageViewer.show_image().
-        """
         if self._image_viewer is None:
             print("ERROR (Gallery): Dependència ImageViewer no inicialitzada. Saltant visualització.")
             return
@@ -155,10 +161,9 @@ class Gallery:
 
         print(f"\n--- Fi de la Galeria: {self.name} ---")
 
-    # 4. Func7: Manipulació Dinàmica
     def add_image_at_end(self, uuid: str) -> None:
         """Afegeix una imatge (UUID) al final de la galeria, si no hi és ja."""
-        if uuid not in self.uuids:
+        if uuid and uuid not in self.uuids:
             self.uuids.append(uuid)
 
     def remove_first_image(self) -> None:
