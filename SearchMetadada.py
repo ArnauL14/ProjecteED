@@ -64,7 +64,7 @@ Implementa Func6 (Cerca i Operadors Lògics).
 """
 
 import cfg
-from ImageData import ImageData # Necessari per accedir a totes les metadades
+from ImageData import ImageData
 
 class SearchMetadata:
 
@@ -75,7 +75,6 @@ class SearchMetadata:
         """
         self._image_data = image_data
         
-        # Mapeig de mètodes d'accés a metadades per a una cerca genèrica
         self._getter_map = {
             "prompt": self._image_data.get_prompt,
             "model": self._image_data.get_model,
@@ -88,7 +87,8 @@ class SearchMetadata:
 
     # Mètodes Màgics Obligatoris
     def __len__(self) -> int:
-        """Retorna el nombre total d'imatges sobre les quals es pot cercar (totes les registrades)."""
+        """Retorna el nombre total d'imatges sobre les quals es pot cercar."""
+        # Utilitzem el mètode públic, ja que len() de ImageData és correcte
         return len(self._image_data)
 
     def __str__(self) -> str:
@@ -100,31 +100,22 @@ class SearchMetadata:
     def _search_by_field(self, field: str, sub: str) -> list:
         """
         Mètode auxiliar genèric per cercar una subcadena en un camp específic.
-        La cerca és case-sensitive i utilitza str.find().
         """
         results = []
         
-        # Obtenir el mètode 'getter' per al camp sol·licitat
         getter_func = self._getter_map.get(field)
         
         if not getter_func:
-            print(f"ERROR: Camp de cerca desconegut: {field}")
             return []
 
-        # Iterar sobre tots els UUIDs que tenim registrats (O(N))
-        # Utilitzem un mètode intern de ImageData per obtenir tots els UUIDs si cal
-        
-        # NOTA: Assumim que ImageData té un mètode per retornar tots els seus UUIDs
-        # (Si no el tens, hauràs de crear un 'get_all_uuids()' a ImageData, 
-        # o iterar sobre les claus del seu diccionari intern si és accessible)
-        all_uuids = self._image_data.database.keys() # Utilitzem .keys() si database és accessible
+        # ** CORRECCIÓ 1: Utilitzem el mètode públic **
+        all_uuids = self._image_data.get_all_uuids() 
         
         for uuid in all_uuids:
-            # Obtenir el valor del camp utilitzant el getter
             value = getter_func(uuid)
             
-            # La cerca es fa només si el valor existeix (no és None)
-            if value is not None and value.find(sub) != -1:
+            # CORRECCIÓ 2 (Mantenim la comprovació de tipus per evitar TypeError)
+            if isinstance(value, str) and value.find(sub) != -1:
                 results.append(uuid)
                 
         return results
@@ -159,21 +150,18 @@ class SearchMetadata:
         """Retorna una llista d'UUID de les imatges que contenen 'sub' en el camp Created_Date."""
         return self._search_by_field("date", sub)
 
-    # --- Func6: Operadors Lògics ---
+    # --- Func6: Operadors Lògics (Es mantenen igual) ---
 
     def and_operator(self, list1: list, list2: list) -> list:
         """
         Retorna una llista amb els UUID que apareixen en AMBDUES llistes.
         (Intersecció de conjunts)
         """
-        # Convertim a set per a fer la intersecció ràpidament (O(N) de mitjana)
         set1 = set(list1)
         set2 = set(list2)
         
-        # Intersecció
         intersection = set1.intersection(set2)
         
-        # Retornem com a llista (sense ordre garantit, que és acceptable)
         return list(intersection)
 
     def or_operator(self, list1: list, list2: list) -> list:
@@ -181,12 +169,9 @@ class SearchMetadata:
         Retorna una llista amb els UUID que apareixen en QUALSEVOL de
         les dues llistes, sense duplicats. (Unió de conjunts)
         """
-        # Convertim a set per a fer la unió ràpidament (O(N) de mitjana)
         set1 = set(list1)
         set2 = set(list2)
         
-        # Unió
         union = set1.union(set2)
         
-        # Retornem com a llista
         return list(union)
