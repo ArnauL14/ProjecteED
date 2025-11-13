@@ -47,29 +47,30 @@ Notes:
     - El format de sortida ha de ser llegible i ben organitzat
 """
 
-import cfg                      # Per a DISPLAY_MODE
+# -*- coding: utf-8 -*-
+"""
+ImageViewer.py : ** REQUIRED ** El vostre codi de la classe ImageViewer.
+"""
+
+import cfg
 import os.path
-from PIL import Image           # Per a la funció show_file
-from ImageID import ImageID     # Encara que no s'utilitza directament, la deixem per si calgués
-from ImageData import ImageData # Necessari per obtenir les metadades
+from PIL import Image
+from ImageID import ImageID
+from ImageData import ImageData
 
 class ImageViewer:
 
     # 1. Constructor
-    # MODIFICACIÓ CLAU: Només accepta l'argument image_data
     def __init__(self, image_data: ImageData):
         """
         Inicialitza la classe amb les dependències necessàries.
         """
-        # Ja no rebem ImageID com a argument, només guardem la referència a ImageData
-        # que és d'on realment es consulten totes les metadades i el path.
         self._image_data = image_data
 
-    # Mètodes Màgics Obligatoris (Requisit: totes les classes)
+    # Mètodes Màgics Obligatoris
     def __len__(self) -> int:
         """
-        Retorna la quantitat d'elements gestionats per la classe que consulta
-        (en aquest cas, la mida de la col·lecció de metadades).
+        Retorna la quantitat d'elements gestionats.
         """
         return len(self._image_data)
     
@@ -81,10 +82,9 @@ class ImageViewer:
     
     def print_image(self, uuid: str) -> None:
         """
-        Imprimeix per pantalla totes les metadades de la imatge identificada per l'UUID.
-        Consulta les dades a l'objecte ImageData.
+        Imprimeix per pantalla totes les metadades de la imatge.
         """
-        # Obtenim les dades bàsiques, utilitzant None com a valor per defecte si no existeix
+        # Obtenim les dades bàsiques (poden ser string o None objecte)
         prompt = self._image_data.get_prompt(uuid)
         model = self._image_data.get_model(uuid)
         seed = self._image_data.get_seed(uuid)
@@ -102,32 +102,35 @@ class ImageViewer:
         print(f"Metadades de la imatge [{uuid}]")
         print("="*50)
         
-        # Truncament del prompt si és molt llarg
-        display_prompt = prompt if prompt is not None else "None"
-        if len(display_prompt) > 100:
+        # ** CORRECCIÓ CLAU **: Tractament de 'None' i truncament del prompt
+        display_prompt = prompt if isinstance(prompt, str) else "N/A"
+        if len(display_prompt) > 100 and display_prompt != "N/A":
              display_prompt = display_prompt[:100] + "..."
              
-        # Mostrar les dades (utilitzant 'N/A' si el valor és l'objecte None)
-        print(f" Dimensions: {width}x{height} pixels" if width is not None else " Dimensions: N/A")
+        # Funció auxiliar per imprimir "N/A" si el valor és None objecte
+        def format_field(value):
+            return str(value) if value is not None else 'N/A'
+
+        # Mostrar les dades
+        print(f" Dimensions: {format_field(width)}x{format_field(height)} pixels" if width is not None else " Dimensions: N/A")
         print(f" Prompt:     {display_prompt}")
-        print(f" Model:      {model if model is not None else 'N/A'}")
-        print(f" Seed:       {seed if seed is not None else 'N/A'}")
-        print(f" CFG Scale:  {cfg_scale if cfg_scale is not None else 'N/A'}")
-        print(f" Steps:      {steps if steps is not None else 'N/A'}")
-        print(f" Sampler:    {sampler if sampler is not None else 'N/A'}")
-        print(f" Generated:  {generated if generated is not None else 'N/A'}")
-        print(f" Created:    {created_date if created_date is not None else 'N/A'}")
+        print(f" Model:      {format_field(model)}")
+        print(f" Seed:       {format_field(seed)}")
+        print(f" CFG Scale:  {format_field(cfg_scale)}")
+        print(f" Steps:      {format_field(steps)}")
+        print(f" Sampler:    {format_field(sampler)}")
+        print(f" Generated:  {format_field(generated)}")
+        print(f" Created:    {format_field(created_date)}")
         print(f" UUID:       {uuid}")
-        print(f" Arxiu:      {file_path if file_path is not None else 'N/A'}")
+        print(f" Arxiu:      {format_field(file_path)}")
         print("="*50)
 
 
     def show_file(self, file: str) -> None:
         """
         Mostra la imatge especificada utilitzant PIL.
-        'file' ha de ser el path canònic relatiu (ex: 'generated_images/cat.png').
         """
-        # Construïm el path absolut per al visualitzador
+        # Construïm el path absolut
         full_path = os.path.join(cfg.get_root(), file)
         
         if not os.path.isfile(full_path):
@@ -136,7 +139,6 @@ class ImageViewer:
              
         print(f"\n[Image Viewer] Mostrant imatge: {full_path}")
         try:
-            # Obrim i mostrem la imatge amb el visualitzador per defecte del SO
             img = Image.open(full_path)
             img.show()
         except Exception as e:
@@ -147,17 +149,11 @@ class ImageViewer:
     def show_image(self, uuid: str, mode: int = None) -> None:
         """
         Combina la impressió de metadades i la visualització de l'arxiu
-        segons el mode (o cfg.DISPLAY_MODE per defecte).
-
-        Args:
-            uuid (str): Identificador de la imatge a mostrar.
-            mode (int): 0: només metadades, 1: metadades + imatge, 2: només imatge.
-                        Si és None, utilitza cfg.DISPLAY_MODE.
+        segons el mode.
         """
-        # Utilitzem el mode passat o el mode de configuració
         display_mode = mode if mode is not None else cfg.DISPLAY_MODE
         
-        # Obtenim el path de l'arxiu (necessari per al mode 1 i 2)
+        # Obtenim el path de l'arxiu (pot ser string o None objecte)
         file_path = self._image_data.get_file_path(uuid)
         
         # 1. Mode 0 o 1: Imprimir Metadades
@@ -165,19 +161,15 @@ class ImageViewer:
             self.print_image(uuid)
         
         # 2. Mode 1 o 2: Mostrar Imatge
-        if (display_mode == 1 or display_mode == 2) and file_path is not None:
-            # Utilitzem show_file, que no espera el tancament
+        if (display_mode == 1 or display_mode == 2) and isinstance(file_path, str):
+            # Utilitzem show_file
             self.show_file(file_path)
             
             # 3. Esperar confirmació (Només si s'ha mostrat la imatge)
-            #    Això fa que la funció sigui SÍNCRONA.
             print("\nImatge mostrada. Premi Enter per continuar...")
             try:
-                # Necessitem fer una pausa per esperar que l'usuari tanqui la imatge
                 input() 
             except EOFError:
-                # Per si s'executa en entorns que no permeten input()
                 pass
         elif file_path is None:
-             # Aquest missatge es manté per a una bona gestió d'errors
              print(f"ERROR: No es pot visualitzar la imatge amb UUID {uuid}. Path canònic no trobat.")
