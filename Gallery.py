@@ -29,10 +29,6 @@ Mètodes a implementar:
         Si una imatge no existeix, l'ignora i continua processant.
         Emmagatzema internament els UUID de les imatges vàlides.
 
-    - show() -> None
-        Visualitza totes les imatges de la galeria en ordre utilitzant
-        ImageViewer.show_image().
-
     - add_image_at_end(uuid: str) -> None
         Afegeix una imatge al final de la galeria.
 
@@ -49,21 +45,18 @@ Notes:
     - Podeu tenir múltiples galeries actives simultàniament
     - Les operacions d'afegir/eliminar són ràpides (no busquen a la llista)
 """
-
 import cfg
 import json
 import os.path
 from ImageID import ImageID
 from ImageData import ImageData
-from ImageViewer import ImageViewer
 
 
 class Gallery:
     def __init__(self,
                  name: str = "Unnamed Gallery",
                  image_id: ImageID = None,
-                 image_data: ImageData = None,
-                 image_viewer: ImageViewer = None):
+                 image_data: ImageData = None,):
         self.name = name
         self.description = ""
         self.created_date = ""
@@ -71,7 +64,6 @@ class Gallery:
 
         self._image_id = image_id
         self._image_data = image_data
-        self._image_viewer = image_viewer
 
     def __len__(self) -> int:
         return len(self.uuids)
@@ -145,21 +137,16 @@ class Gallery:
             self.uuids = []
 
     def show(self) -> None:
-        if self._image_viewer is None:
-            print("ERROR (Gallery): Dependència ImageViewer no inicialitzada. Saltant visualització.")
-            return
-
-        print(f"\n--- Visualitzant Galeria: {self.name} (Total: {len(self.uuids)} imatges) ---")
-
+        """
+        Versió simplificada per a la Fase 2 (sense ImageViewer).
+        """
+        print(f"\n--- Galeria: {self.name} (Total: {len(self.uuids)} imatges) ---")
         if not self.uuids:
             print("La galeria està buida.")
             return
 
         for i, uuid in enumerate(self.uuids):
-            print(f"\n[Mostrant Imatge {i+1}/{len(self.uuids)} de la Galeria '{self.name}']")
-            self._image_viewer.show_image(uuid)
-
-        print(f"\n--- Fi de la Galeria: {self.name} ---")
+            print(f"[{i+1}/{len(self.uuids)}] UUID: {uuid}")
 
     def add_image_at_end(self, uuid: str) -> None:
         """Afegeix una imatge (UUID) al final de la galeria, si no hi és ja."""
